@@ -14,7 +14,6 @@ __status__ = "Development"
 import struct
 import io
 import zlib
-import cStringIO
 import sys
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
@@ -429,7 +428,7 @@ def parse_module_public_functions(module, buf, flags, header):
             if cur_byte & FUNCTION_UNRESOLVED_COLLISION :
                 fcn.is_col = True
             if (cur_byte & FUNCTION_D) or (cur_byte & FUNCTION_Q):
-                print "investig. flag of pub name..."
+                print("investig. flag of pub name...")
             cur_byte = next_byte(buf)
         for i in range(MAX_FLIRT_FUNCTION_NAME):
             if cur_byte < 0x20:
@@ -596,12 +595,12 @@ def dump_node_pattern (node):
             sys.stdout.write("..")
         else:
             sys.stdout.write("%02X"%node.pat_bytes[i])
-    print ":"
+    print(":")
 
 
 def ident(indent):
     for i in range(indent):
-        print "  ",
+        print("  ",)
 
 def dump_module(module):
     '''Prints module's public functions, tail bytes and referenced functions'''
@@ -619,11 +618,11 @@ def dump_module(module):
         for tail_byte in module.tail_bytes:
             sys.stdout.write(" (%04X: %02X)"%(tail_byte.offset, tail_byte.value))
     if module.ref_fcns:
-        print " (REF ",
+        print(" (REF ",)
         for ref_func in module.ref_fcns:
             sys.stdout.write("%04X: %s"%(ref_func.offset, ref_func.name))
         sys.stdout.write(")")
-    print " "
+    print(" ")
 
 def dump_node(node,indent = 0):
     '''dump a flirt signature node, the output is the same as the dumpsig command output'''
@@ -637,7 +636,7 @@ def dump_node(node,indent = 0):
         i = 0
         for module in node.modules:
             ident (indent + 1)
-            print "%d."%i,
+            print("%d."%i,)
             dump_module(module)
             i+=1
 
@@ -651,41 +650,41 @@ def dump_header(header):
     Args:
         header (:obj:`FlirtHeader`): a parsed signature file header, use parse_signature_file() function to parse the header
     '''
-    print "lib: %s"%header.lib_name
-    print "magic: %s"%header.magic
-    print "version: %d"%header.version
-    print "arch: %s"%ARCH[header.arch]
+    print("lib: %s"%header.lib_name)
+    print("magic: %s"%header.magic)
+    print("version: %d"%header.version)
+    print("arch: %s"%ARCH[header.arch])
     file_types = ""
     for file_type in FILE_TYPE:
         file_types+= parse_flg_str(FILE_TYPE[file_type],header.file_types, file_type)+" "
-    print "file type: %s"%file_types
+    print("file type: %s"%file_types)
     os_types = ""
     for os_type in OS_TYPE:
         os_types+= parse_flg_str(OS_TYPE[os_type],header.os_types, os_type)+" "
-    print "os type: %s"%os_types
+    print("os type: %s"%os_types)
 
     app_types = ""
     for app_type in APP_TYPE:
         app_types+= parse_flg_str(APP_TYPE[app_type],header.app_types, app_type)+" "
-    print "app type: %s"%app_types
+    print("app type: %s"%app_types)
     features = ""
     for feature in FEATURES:
         features+= parse_flg_str(FEATURES[feature],header.features, feature)+" "
-    print "features: %s"%features
-    print "old n functions: %04x"%header.old_n_fcns
-    print "crc16: %04x"%header.crc16
-    print "ctype: %s"%header.ctype
-    print "lib name len: %s"%header.lib_name_length
-    print "ctypes crc16: %04x"%header.ctypes_crc16
+    print("features: %s"%features)
+    print("old n functions: %04x"%header.old_n_fcns)
+    print("crc16: %04x"%header.crc16)
+    print("ctype: %s"%header.ctype)
+    print("lib name len: %s"%header.lib_name_length)
+    print("ctypes crc16: %04x"%header.ctypes_crc16)
 
     if header.version >= 6:
-        print "n functions: %08x"%header.n_fcns
+        print("n functions: %08x"%header.n_fcns)
     if header.version >= 8:
-        print "pattern size: %d"%header.pat_size
+        print("pattern size: %d"%header.pat_size)
     if header.version >= 10:
-        print "unknown v10: %02x"%header.ctype_unknown_field
+        print("unknown v10: %02x"%header.ctype_unknown_field)
 
-    print "lib name: %s"%header.lib_name
+    print("lib name: %s"%header.lib_name)
 
 def parse_signature_file(file):
     '''Parse a flirt signature file
@@ -701,9 +700,9 @@ def parse_signature_file(file):
     buf = io.BytesIO(sigfile.read())
     buf.seek(0)
     header.magic = buf.read(6)
-    if header.magic != "IDASGN":
-        print 'Not a FLIRT signature'
-        return
+    if header.magic != b"IDASGN":
+        print('Not a FLIRT signature')
+        return False, False
     header.version = next_byte(buf)
     header.arch = next_byte(buf)
     header.file_types = next_word(buf)
@@ -727,11 +726,11 @@ def parse_signature_file(file):
     # if the signature file is compressed then decompress it
     if header.features & 0x10:
         if header.version == 5 :
-            print 'Compression is not supported in version 5'
-            return
+            print('Compression is not supported in version 5')
+            return False, False
         z = zlib.decompressobj()
         buf = z.decompress(buf)
-    buf = cStringIO.StringIO(buf)
+    buf = io.BytesIO(buf)
     buf.seek(0)
     # create the root node
     root_node = FlirtNode()
@@ -763,8 +762,8 @@ def crc16(buf, len):
                 reg ^= poly
         i+=1
     reg ^= 0xffff
-    crc = chr(reg & 0xff) + chr(reg >> 8)
-    return int(crc.encode("hex"),16)
+    crc = ((reg & 0xff) << 8) + (reg >> 8)
+    return crc
 
 
 def node_compare_pattern(node, buf,debug=False):
@@ -822,7 +821,7 @@ def identify_functions(node, buf, debug=False):
             if variant[i]:
                 re_pat+=b"(.)"
             else:
-                re_pat+=re.escape(chr(pattern[i]))
+                re_pat+=re.escape(chr(pattern[i])).encode()
             # compile the regex
         regex = re.compile(re_pat, re.DOTALL+re.MULTILINE)
         # search inside the binary for bytes that match the current node pattern
@@ -879,12 +878,14 @@ def lscan(sigfile, binfile, debug = False, dump = False):
         matches.clear()
         # parse a signature file
         root_node, header = parse_signature_file(sigf)
+        if not root_node and not header:
+            continue
         if dump:
             dump_header(header)
             dump_node(root_node)
         # do the job
         identify_functions(root_node, buf, debug)
-        print "%s %d/%d (%s%%)"%(sigf, len(matches), header.num_fcns, "{:.2f}".format(100 * float(len(matches))/float(header.num_fcns)))
+        print("%s %d/%d (%s%%)"%(sigf, len(matches), header.num_fcns, "{:.2f}".format(100 * float(len(matches))/float(header.num_fcns))))
         # print the result
         if debug:
             for addr in matches:
@@ -897,14 +898,14 @@ def lscan(sigfile, binfile, debug = False, dump = False):
                     for seg in segs:
                         if seg.addr + int(addr,16) < seg.addr + seg.size:
                             found = True
-                            print "\t%s 0x%08x %s"%(string_head, seg.addr + int(addr,16), ', '.join(matches[addr]))
+                            print("\t%s 0x%08x %s"%(string_head, seg.addr + int(addr,16), ', '.join(matches[addr])))
                             break
                         if not found:
-                            print "\t%s 0x%x: %s  \033[0;33m<- not within a segment\033[0m"%(string_head, imgbase + int(addr,16), ', '.join(matches[addr]))
+                            print("\t%s 0x%x: %s  \033[0;33m<- not within a segment\033[0m"%(string_head, imgbase + int(addr,16), ', '.join(matches[addr])))
                 elif format == 'PE':
-                    print "\t%s 0x%x: %s"%(string_head, imgbase + int(addr,16), ', '.join(matches[addr]))
+                    print("\t%s 0x%x: %s"%(string_head, imgbase + int(addr,16), ', '.join(matches[addr])))
                 elif format == 'RAW':
-                    print "\t%s 0x%x: %s"%(string_head, int(addr,16), ', '.join(matches[addr]))
+                    print("\t%s 0x%x: %s"%(string_head, int(addr,16), ', '.join(matches[addr])))
 
 
 if __name__ == "__main__":
@@ -931,6 +932,7 @@ if __name__ == "__main__":
         pars.error('%s is a directory'%opts.sigfile)
 
     lscan(opts.sigdir if opts.sigdir else opts.sigfile, opts.binfile, opts.verbose, opts.dump)
+
 
 
 
